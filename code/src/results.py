@@ -26,8 +26,12 @@ plt.rcParams.update(params)
 def compute_score(true,ana):
     score = []
     nt = true.shape[0]
-    true = true.reshape(nt,int(true.size//nt))
-    ana = ana.reshape(nt,int(ana.size//nt)) 
+    if nt>0:
+        true = true.reshape(nt,int(true.size//nt))
+        ana = ana.reshape(nt,int(ana.size//nt)) 
+    else:
+        true = true.ravel()
+        ana = ana.ravel()
     for t in range(nt):
         rmse = np.sqrt(np.sum(np.square(ana[t]-true[t]))/int(true.size//nt))
         score.append(1-rmse/np.std(true[t]))
@@ -227,11 +231,12 @@ def plot_result(
     
     fig.savefig( dir_out + '/results_iter' + str(niter).zfill(6),bbox_inches='tight' )
     
-    plt.show()
+    plt.close('all')
+    
     
 
-def plot_traj(u_true,v_true,h_true,He_true,hbcS_true,hbcN_true,hbcW_true,hbcE_true,
-        u_ana,v_ana,h_ana,He_ana,hbcS_ana,hbcN_ana,hbcW_ana,hbcE_ana,
+def plot_traj(u_true,v_true,h_true,He_true,hbcx_true,hbcy_true,
+        u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,
         tobs,dir_out,dt):
     
     time = 0
@@ -253,6 +258,17 @@ def plot_traj(u_true,v_true,h_true,He_true,hbcS_true,hbcN_true,hbcW_true,hbcE_tr
         score_v = compute_score(np.asarray(v_true)[:ind],np.asarray(v_ana)[:ind])
         score_h = compute_score(np.asarray(h_true)[:ind],np.asarray(h_ana)[:ind])
         score_He = compute_score(np.asarray(He_true)[:ind],np.asarray(He_ana)[:ind])
+        hbc_true_all = np.concatenate((
+            hbcx_true[:,0,0,:],hbcx_true[:,0,1,:],
+            hbcx_true[:,1,0,:],hbcx_true[:,1,1,:],
+            hbcy_true[:,0,0,:],hbcy_true[:,0,1,:],
+            hbcy_true[:,1,0,:],hbcy_true[:,1,1,:]),axis=1)
+        hbc_ana_all = np.concatenate((
+            hbcx_ana[:,0,0,:],hbcx_ana[:,0,1,:],
+            hbcx_ana[:,1,0,:],hbcx_ana[:,1,1,:],
+            hbcy_ana[:,0,0,:],hbcy_ana[:,0,1,:],
+            hbcy_ana[:,1,0,:],hbcy_ana[:,1,1,:]),axis=1)
+        score_hbc  = compute_score(hbc_true_all,hbc_ana_all)
         
         gs = gridspec.GridSpec(6, 4,height_ratios=[1,1,1,1,0.5,0.5])
         fig = plt.figure(figsize=(30, 30)) 
@@ -328,45 +344,48 @@ def plot_traj(u_true,v_true,h_true,He_true,hbcS_true,hbcN_true,hbcW_true,hbcE_tr
         ax5 = plt.subplot(gs[4:, 2:])   
     
         
-        ax1.plot(hbcN_true[0],label='cos (truth)',c='b')
-        ax1.plot(hbcN_ana[0],label='cos (ana)',c='b',linestyle='--')
-        ax1.plot(hbcN_true[1],label='sin (truth)',c='r')
-        ax1.plot(hbcN_ana[1],label='sin (ana)',c='r',linestyle='--')
+        ax1.plot(hbcx_true[ind,1,0],label='cos (truth)',c='b')
+        ax1.plot(hbcx_ana[ind,1,0],label='cos (ana)',c='b',linestyle='--')
+        ax1.plot(hbcx_true[ind,1,1],label='sin (truth)',c='r')
+        ax1.plot(hbcx_ana[ind,1,1],label='sin (ana)',c='r',linestyle='--')
         ax1.legend(loc=3)
         ax1.set_title('Northern boundary')        
         ax1.set_ylabel('SLA (m)')
         ax1.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
         ax1.set_ylim(-range_h,range_h)
         
-        ax2.plot(hbcS_true[0],label='cos (true)',c='b')
-        ax2.plot(hbcS_ana[0],label='cos (ana)',c='b',linestyle='--')
-        ax2.plot(hbcS_true[1],label='sin (true)',c='r')
-        ax2.plot(hbcS_ana[1],label='sin (ana)',c='r',linestyle='--')
+        ax2.plot(hbcx_true[ind,0,0],label='cos (true)',c='b')
+        ax2.plot(hbcx_ana[ind,0,0],label='cos (ana)',c='b',linestyle='--')
+        ax2.plot(hbcx_true[ind,0,1],label='sin (true)',c='r')
+        ax2.plot(hbcx_ana[ind,0,1],label='sin (ana)',c='r',linestyle='--')
         ax2.set_title('Southern boundary')
         ax2.set_ylabel('SLA (m)')
         ax2.set_xlabel('nx')
         ax2.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
         ax2.set_ylim(-range_h,range_h)
         
-        ax3.plot(hbcW_true[0],label='cos (true)',c='b')
-        ax3.plot(hbcW_ana[0],label='cos (ana)',c='b',linestyle='--')
-        ax3.plot(hbcW_true[1],label='sin (true)',c='r')
-        ax3.plot(hbcW_ana[1],label='sin (ana)',c='r',linestyle='--')
+        ax3.plot(hbcy_true[ind,0,0],label='cos (true)',c='b')
+        ax3.plot(hbcy_ana[ind,0,0],label='cos (ana)',c='b',linestyle='--')
+        ax3.plot(hbcy_true[ind,0,1],label='sin (true)',c='r')
+        ax3.plot(hbcy_ana[ind,0,1],label='sin (ana)',c='r',linestyle='--')
         ax3.set_title('Western boundary')
         ax3.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
         ax3.set_ylim(-range_h,range_h)
         
-        ax4.plot(hbcE_true[0],label='cos (true)',c='b')
-        ax4.plot(hbcE_ana[0],label='cos (ana)',c='b',linestyle='--')
-        ax4.plot(hbcE_true[1],label='sin (true)',c='r')
-        ax4.plot(hbcE_ana[1],label='sin (ana)',c='r',linestyle='--')
+        ax4.plot(hbcy_true[ind,1,0],label='cos (true)',c='b')
+        ax4.plot(hbcy_ana[ind,1,0],label='cos (ana)',c='b',linestyle='--')
+        ax4.plot(hbcy_true[ind,1,1],label='sin (true)',c='r')
+        ax4.plot(hbcy_ana[ind,1,1],label='sin (ana)',c='r',linestyle='--')
         ax4.set_title('Eastern boundary')
         ax4.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
         ax4.set_xlabel('ny')
         ax4.set_ylim(-range_h,range_h)
+        
+        ax5.plot(score_hbc)
+        ax5.set_ylim(0.,1)
     
         fig.savefig( dir_out + '/snapshot_' + str(time).zfill(6),bbox_inches='tight' )
-        if ind<nt:
-            plt.close('all')
+        
+        plt.close('all')
             
         time += dt

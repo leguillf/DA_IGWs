@@ -70,11 +70,11 @@ else:
         tt.append(t)
         He_tmp = nr.random_He(hc=500e3)
         He.append(He_tmp)
-        plt.figure()
-        plt.pcolormesh(He_tmp)
-        plt.title('He')
-        plt.colorbar()
-        plt.show()
+        # plt.figure()
+        # plt.pcolormesh(He_tmp)
+        # plt.title('He')
+        # plt.colorbar()
+        # plt.show()
         t += T_He
     He0 = He[0]
     try:
@@ -103,13 +103,12 @@ else:
         hbcx_tmp,hbcy_tmp = nr.random_bc(hc=500e3,West=[acos,asin])
         hbcx.append(hbcx_tmp)
         hbcy.append(hbcy_tmp)
-        plt.figure()
-        plt.plot(hbcy_tmp[0,0],label='cos')
-        plt.plot(hbcy_tmp[0,1],label='sin')
-        plt.title('West BC')
-        plt.legend()
-        plt.show()
-        plt.show()
+        # plt.figure()
+        # plt.plot(hbcy_tmp[0,0],label='cos')
+        # plt.plot(hbcy_tmp[0,1],label='sin')
+        # plt.title('West BC')
+        # plt.legend()
+        # plt.show()
         t += T_bc
     hbcx0 = hbcx[0]
     hbcy0 = hbcy[0]
@@ -140,7 +139,7 @@ if plot_spinup:
 t = 0
 while t<=time_spinup:
     
-    if plot_spinup or time_spinup-nr.dt<t<=time_spinup:        
+    if plot_spinup:        
             
         time_str = str(round(t/3600,2))
         fig, (ax1,ax2,ax3) = plt.subplots(1,3, figsize=(15,5))
@@ -157,13 +156,12 @@ while t<=time_spinup:
         ax1.set_title('U',fontsize=15)
         ax2.set_title('V',fontsize=15)
         ax3.set_title('SLA',fontsize=15)
-        if plot_spinup:
-            # Savefig
-            fig.savefig( dir_spinup + '/spinup_' +\
-                        str(int(t)).zfill(6),bbox_inches='tight' )
-            plt.close('all')
-        else:
-            plt.show()
+        
+        fig.savefig( dir_spinup + '/spinup_' +\
+                    str(int(t)).zfill(6),bbox_inches='tight' )
+            
+        plt.close('all')
+        
     u,v,h = nr.step(t,u,v,h,He=He0,hbcx=hbcx0,hbcy=hbcy0)
     t += nr.dt
     
@@ -186,14 +184,14 @@ y_list = list(H_nr.yo.values())
 
 ntobs = np.asarray(tobs)//nr.dt
 
-for t,y in zip(tobs,y_list):
-    fig, (ax1) = plt.subplots(1,1, figsize=(5,5))
+# for t,y in zip(tobs,y_list):
+#     fig, (ax1) = plt.subplots(1,1, figsize=(5,5))
 
-    im1 = ax1.pcolormesh(y.reshape(nr.ny,nr.nx))
+#     im1 = ax1.pcolormesh(y.reshape(nr.ny,nr.nx))
 
-    cbar.ax.set_title('m')
-    ax1.set_title(str(t//3600) + 'hrs')
-    plt.show()
+#     cbar.ax.set_title('m')
+#     ax1.set_title(str(t//3600) + 'hrs')
+#     plt.show()
 
 ##############################################################################
 # Observation operator  
@@ -243,20 +241,20 @@ Jini = var.cost(Xopt)
 Gini = var.grad(Xopt)
 print(Jini)
 
-fig, (ax1,ax2,ax3,ax4) = plt.subplots(1,4, figsize=(25,5))
-im1 = ax1.pcolormesh(Gini[swm.sliceu].reshape(swm.shapeu),cmap='RdBu_r')
-im2 = ax2.pcolormesh(Gini[swm.slicev].reshape(swm.shapev),cmap='RdBu_r')
-im3 = ax3.pcolormesh(Gini[swm.sliceh].reshape(swm.shapeh))
-im4 = ax4.pcolormesh(swm.get_He2d(Gini[swm.sliceHe].reshape(swm.shapeHe)))
-plt.colorbar(im1,ax=ax1)
-plt.colorbar(im2,ax=ax2)
-plt.colorbar(im3,ax=ax3)
-plt.colorbar(im4,ax=ax4)
-ax1.set_title('gradJ_U',fontsize=15)
-ax2.set_title('gradJ_V',fontsize=15)
-ax3.set_title('gradJ_h',fontsize=15)       
-ax4.set_title('gradJ_He',fontsize=15)       
-plt.show()
+# fig, (ax1,ax2,ax3,ax4) = plt.subplots(1,4, figsize=(25,5))
+# im1 = ax1.pcolormesh(Gini[swm.sliceu].reshape(swm.shapeu),cmap='RdBu_r')
+# im2 = ax2.pcolormesh(Gini[swm.slicev].reshape(swm.shapev),cmap='RdBu_r')
+# im3 = ax3.pcolormesh(Gini[swm.sliceh].reshape(swm.shapeh))
+# im4 = ax4.pcolormesh(swm.get_He2d(Gini[swm.sliceHe].reshape(swm.shapeHe)))
+# plt.colorbar(im1,ax=ax1)
+# plt.colorbar(im2,ax=ax2)
+# plt.colorbar(im3,ax=ax3)
+# plt.colorbar(im4,ax=ax4)
+# ax1.set_title('gradJ_U',fontsize=15)
+# ax2.set_title('gradJ_V',fontsize=15)
+# ax3.set_title('gradJ_h',fontsize=15)       
+# ax4.set_title('gradJ_He',fontsize=15)       
+# plt.show()
 
 
 
@@ -264,8 +262,10 @@ plt.show()
 
 ##############################################################################
 # DA
-res_list = []
 ##############################################################################
+
+res_list = []
+
 
 niter = 0
 
@@ -314,7 +314,7 @@ print()
 u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana \
             = get_ana_traj(res_list[-1],swm,time_assim,None)
 plot_traj(u_true,v_true,h_true,He_t,hbcx_t,hbcy_t, 
-          u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,ntobs,niter,dir_out,swm.dt)
+          u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,ntobs,dir_out,swm.dt)
 
 
 
