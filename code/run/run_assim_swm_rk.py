@@ -31,7 +31,13 @@ from scipy import interpolate
 
 
 # Config
-file_config = 'config_rk'
+
+if len(sys.argv)==2:
+    file_config = str(sys.argv[1])
+else:
+    file_config = 'config_example'
+    
+
 path_config = '../config/' + file_config + '.py'
 shutil.copyfile(path_config, 'config_specific.py')
 from config_specific import *
