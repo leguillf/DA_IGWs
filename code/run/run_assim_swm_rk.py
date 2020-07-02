@@ -45,7 +45,7 @@ nr = Swm(nx=nx,ny=ny,Lx=Lx,Ly=Ly,He=He_true,omegas=w_igws,dt=dt)
 ##############################################################################
 # Propagator
 swm = Swm(
-    Lt=time_assim,nx=nx,ny=ny,Lx=Lx,Ly=Ly,
+    Lt=time_assim+time_spinup,nx=nx,ny=ny,Lx=Lx,Ly=Ly,
     He=He_true,omegas=w_igws,dt=dt,D_He=D_He,D_bc=D_bc,T_He=T_He,T_bc=T_bc)
 
 ##############################################################################
@@ -137,7 +137,7 @@ if plot_spinup:
 
 # Integration to reach permanent state
 t = 0
-while t<=time_spinup:
+while t<=time_init:
     
     if plot_spinup:        
             
@@ -222,7 +222,7 @@ if reg:
 # Variational
 ##############################################################################
 var = Variational(
-    Xb=Xb, M=swm, H=H, R=R, Rinv=Rinv, B=B,time_assim=time_assim,time_spinup=None)
+    Xb=Xb, M=swm, H=H, R=R, Rinv=Rinv, B=B,time_assim=time_assim,time_spinup=time_spinup)
 
 
 # Gradient check
@@ -288,7 +288,7 @@ def callback(XX):
     if niter % 10 == 0:
         
         u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana \
-            = get_ana_traj(XX,swm,time_assim,None)
+            = get_ana_traj(XX,swm,time_assim,time_spinup)
         plot_result(
             u_true,v_true,h_true,He_t,hbcx_t,hbcy_t, 
             u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,ntobs,niter,dir_out)

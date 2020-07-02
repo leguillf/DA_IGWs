@@ -33,6 +33,7 @@ sigmab = {'h':0.2,'He':0.2,'bc':0.2}
 
 
 # Time parameters
+time_init = timedelta(days=20).total_seconds()
 time_spinup = timedelta(days=20).total_seconds()
 time_assim =  timedelta(days=10).total_seconds()
 
