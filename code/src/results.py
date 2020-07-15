@@ -65,7 +65,7 @@ def get_ana_traj(Xopt,M,times_true,time_assim,time_spinup=None):
     
     t = t0
     
-    tt = [t0]
+    tt = [t-t0]
     
     while t<t0+time_assim:
         
@@ -80,8 +80,7 @@ def get_ana_traj(Xopt,M,times_true,time_assim,time_spinup=None):
         hbcx_ana.append(hbcx0)
         hbcy_ana.append(hbcy0)
         
-        tt.append(t)
-    
+        tt.append(t-t0)
     
     u_ana = np.asarray(u_ana)
     v_ana = np.asarray(v_ana)
@@ -91,7 +90,6 @@ def get_ana_traj(Xopt,M,times_true,time_assim,time_spinup=None):
     hbcy_ana = np.asarray(hbcy_ana)
     tt = np.asarray(tt)
 
-    
     # time interpolation
     f = interpolate.interp1d(tt,u_ana,axis=0)
     u_ana = f(times_true)
@@ -111,33 +109,33 @@ def get_ana_traj(Xopt,M,times_true,time_assim,time_spinup=None):
 
 
 def plot_diags_scores(
-        u_true,v_true,h_true,
+        u_igws_true,v_igws_true,h_igws_true,h_true,
         u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,
-        times,tobs,dir_out,ind,title):
+        times,tobs,dir_out,ind,title,plot=False):
 
     fig,axs = plt.subplots(4,3,figsize=(30, 30)) 
     
     fig.suptitle(title)
     
     # Scores 
-    score_u = compute_score(u_true,u_ana)
-    score_v = compute_score(v_true,v_ana)
-    score_h = compute_score(h_true,h_ana)
+    score_u = compute_score(u_igws_true,u_ana)
+    score_v = compute_score(v_igws_true,v_ana)
+    score_h = compute_score(h_igws_true,h_ana)
     
     # Ranges
-    range_u = 0.9*np.max(np.abs(u_true))
-    range_v = 0.9*np.max(np.abs(v_true))
-    range_h = 0.9*np.max(np.abs(h_true))
+    range_u = 0.9*np.max(np.abs(u_igws_true))
+    range_v = 0.9*np.max(np.abs(v_igws_true))
+    range_h = 0.9*np.max(np.abs(h_igws_true))
     
     # U
-    im1 = axs[0,0].pcolormesh(u_true[ind],vmin=-range_u,vmax=range_u,cmap='RdBu_r')
+    im1 = axs[0,0].pcolormesh(u_igws_true[ind],vmin=-range_u,vmax=range_u,cmap='RdBu_r')
     cbar = plt.colorbar(im1,ax=axs[0,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[0,0].set_title('u_true')
+    axs[0,0].set_title('u true')
     im2 = axs[0,1].pcolormesh(u_ana[ind],vmin=-range_u,vmax=range_u,cmap='RdBu_r')
     cbar = plt.colorbar(im2,ax=axs[0,1])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[0,1].set_title('u_ana')
+    axs[0,1].set_title('u ana')
     axs[0,2].set_title('RMSE score (u)')
     axs[0,2].plot(times[:ind]/3600/24,score_u[:ind])
     axs[0,2].set_xlim(0,times[-1]/3600/24)
@@ -145,14 +143,14 @@ def plot_diags_scores(
     axs[0,2].set_xlabel('time (days)')
     
     # V
-    im1 = axs[1,0].pcolormesh(v_true[ind],vmin=-range_v,vmax=range_v,cmap='RdBu_r')
+    im1 = axs[1,0].pcolormesh(v_igws_true[ind],vmin=-range_v,vmax=range_v,cmap='RdBu_r')
     cbar = plt.colorbar(im1,ax=axs[1,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[1,0].set_title('v_true')
+    axs[1,0].set_title('v true')
     im2 = axs[1,1].pcolormesh(v_ana[ind],vmin=-range_v,vmax=range_v,cmap='RdBu_r')
     cbar = plt.colorbar(im2,ax=axs[1,1])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[1,1].set_title('v_ana')
+    axs[1,1].set_title('v ana')
     axs[1,2].set_title('RMSE score (v)')
     axs[1,2].plot(times[:ind]/3600/24,score_v[:ind])
     axs[1,2].set_xlim(0,times[-1]/3600/24)
@@ -160,14 +158,14 @@ def plot_diags_scores(
     axs[1,2].set_xlabel('time (days)')
     
     # SSH
-    im1 = axs[2,0].pcolormesh(h_true[ind],vmin=-range_h,vmax=range_h,cmap='RdBu_r')
+    im1 = axs[2,0].pcolormesh(h_igws_true[ind],vmin=-range_h,vmax=range_h,cmap='RdBu_r')
     cbar = plt.colorbar(im1,ax=axs[2,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[2,0].set_title('ssh_true')
+    axs[2,0].set_title('ssh true')
     im2 = axs[2,1].pcolormesh(h_ana[ind],vmin=-range_h,vmax=range_h,cmap='RdBu_r')
     cbar = plt.colorbar(im2,ax=axs[2,1])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    axs[2,1].set_title('ssh_ana')
+    axs[2,1].set_title('ssh ana')
     axs[2,2].plot(times[:ind]/3600/24,score_h[:ind])
     axs[2,2].set_title('RMSE score (ssh)')
     axs[2,2].plot(tobs/3600/24,0.5*np.ones((len(tobs))),'xr',markersize=20)
@@ -176,51 +174,53 @@ def plot_diags_scores(
     axs[2,2].set_ylim(0,1)
     
     # He & Boundary conditions 
-    im1 = axs[3,0].pcolormesh(He_ana[ind])
+    im1 = axs[3,0].pcolormesh(h_true[ind])
     cbar = plt.colorbar(im1,ax=axs[3,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    cbar.ax.set_title('m')
-    axs[3,0].set_title('He_ana')
+    axs[3,0].set_title('ssh (full) true')
     
-    axs[3,1].plot(hbcx_ana[ind,0,0],label='South (cos)',c='b')
-    axs[3,1].plot(hbcx_ana[ind,0,1],label='South (sin)',c='b',linestyle='--')
-    axs[3,1].plot(hbcx_ana[ind,1,0],label='North (cos)',c='r')
-    axs[3,1].plot(hbcx_ana[ind,1,1],label='North (sin)',c='r',linestyle='--')
+    im2 = axs[3,1].pcolormesh(He_ana[ind])
+    cbar = plt.colorbar(im2,ax=axs[3,1])
+    cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
+    axs[3,1].set_title('He ana')
+    
+    axs[3,2].plot(hbcx_ana[ind,0,0],label='South (cos)',c='b')
+    axs[3,2].plot(hbcx_ana[ind,0,1],label='South (sin)',c='b',linestyle='--')
+    axs[3,2].plot(hbcx_ana[ind,1,0],label='North (cos)',c='r')
+    axs[3,2].plot(hbcx_ana[ind,1,1],label='North (sin)',c='r',linestyle='--')
     axs[3,2].plot(hbcy_ana[ind,0,0],label='West (cos)',c='c')
     axs[3,2].plot(hbcy_ana[ind,0,1],label='West (sin)',c='c',linestyle='--')
     axs[3,2].plot(hbcy_ana[ind,1,0],label='East (cos)',c='g')
     axs[3,2].plot(hbcy_ana[ind,1,1],label='East (sin)',c='g',linestyle='--')
-    
-    axs[3,1].set_xlabel('nx')
-    axs[3,1].set_ylabel('ssh (m)')
-    axs[3,2].set_xlabel('ny')
     axs[3,2].set_ylabel('ssh (m)')
-    
-    axs[3,1].legend()
     axs[3,2].legend()
     
-    plt.show()
+    if plot:
+        plt.show()
  
     return fig
         
     
     
 
-def plot_traj_scores(u_true,v_true,ssh_true,
+def plot_traj_scores(u_igws_true,v_igws_true,h_igws_true,h_true,
         u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana,
-        times,tobs,dir_out,dt):
+        times,tobs,dir_out,dt,plot=False):
     
     time = 0
-    nt = len(u_true)
+    nt = len(h_true)
     
     
     
     for ind in range(nt):
         
         fig = plot_diags_scores(
-            u_true,v_true,ssh_true,
+            u_igws_true,v_igws_true,h_igws_true,h_true,
             u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana,
-            times,tobs,dir_out,ind,str(round(time/3600,1)) + ' hrs')
+            times,tobs,dir_out,ind,str(round(time/3600,1)) + ' hrs',plot)
         fig.savefig(dir_out + '/snapshot_iter' + str(ind).zfill(6),bbox_inches='tight')
+        
+        fig.clf()
+        plt.close()
         
         time += dt

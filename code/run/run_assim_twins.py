@@ -37,36 +37,27 @@ path_config = '../config/' + file_config + '.py'
 shutil.copyfile(path_config, 'config_specific.py')
 from config_specific import *
 
-
-plot = True
-
 ###############################################################################
 # NR
 ###############################################################################
-path_nr = '/Users/leguillou/WORK/Developpement/Studies/Jet/4DVAR/DATA/uvh_igws_degraded.nc'
-#ds = xr.open_zarr(path_nr)
+print('*** Nature run ***')
 ds = xr.open_dataset(path_nr)
 print(ds)
 
-
-slice_t = slice(3000,3200)
-i1,i2 = 70,-60
-j1,j2 = 5,-5
-
-times_true = ds.time[slice_t].values 
+times_true = ds[name_nr_time][t1:t2].values 
 times_true -= times_true[0]
-ssh_true = ds.ssh_igws[slice_t,i1:i2,j1:j2].values
-u_true = ds.u_igws[slice_t,i1:i2,j1:j2].values
-v_true = ds.v_igws[slice_t,i1:i2,j1:j2].values
-
-ssh_obs = ds.ssh[slice_t,i1:i2,j1:j2].values
+u_true = ds[name_nr_u][t1:t2,i1:i2,j1:j2].values
+v_true = ds[name_nr_v][t1:t2,i1:i2,j1:j2].values
+ssh_true = ds[name_nr_ssh][t1:t2,i1:i2,j1:j2].values
+u_igws_true = ds[name_nr_u_igws][t1:t2,i1:i2,j1:j2].values
+v_igws_true = ds[name_nr_v_igws][t1:t2,i1:i2,j1:j2].values
+ssh_igws_true = ds[name_nr_ssh_igws][t1:t2,i1:i2,j1:j2].values
 
 if plot:
     fig, (ax1,ax2,ax3,ax4) = plt.subplots(1,4, figsize=(20,5))
     im1 = ax1.pcolormesh(u_true[0],cmap='RdBu_r')
     im2 = ax2.pcolormesh(v_true[0],cmap='RdBu_r')
     im3 = ax3.pcolormesh(ssh_true[0])
-    im4 = ax4.pcolormesh(ssh_obs[0])
     cbar = plt.colorbar(im1,ax=ax1)
     cbar.ax.set_title('m/s')
     cbar = plt.colorbar(im2,ax=ax2)
@@ -78,8 +69,8 @@ if plot:
     ax3.set_title('SSH',fontsize=15)
     plt.show()
 
-dx = (ds.x_rho[1]-ds.x_rho[0]).values
-dy = (ds.y_rho[1]-ds.y_rho[0]).values
+dx = (ds[name_nr_x][1]-ds[name_nr_x][0]).values
+dy = (ds[name_nr_y][1]-ds[name_nr_y][0]).values
 dt_true = times_true[1] - times_true[0] # 3hrs
 nt,ny,nx = ssh_true.shape
 
@@ -90,24 +81,29 @@ Ly = ny*dy
 ##############################################################################
 # Propagator
 ##############################################################################
-w_igws = [2*np.pi/12/3600]
+print('*** Model ***')
 swm = Swm(
-    Lt=Lt,nx=nx,ny=ny,Lx=Lx,Ly=Ly,dt=3600,
-    He=He_true,omegas=w_igws,D_He=D_He,D_bc=D_bc,T_He=T_He,T_bc=T_bc)
-dt = swm.dt
+    Lt=Lt+time_spinup,nx=nx,ny=ny,Lx=Lx,Ly=Ly,dt=dt,
+    He=He,omegas=w_igws,D_He=D_He,D_bc=D_bc,T_He=T_He,T_bc=T_bc)
 
 ##############################################################################
 # Observations 
 ##############################################################################
-ind_obs = [np.random.randint(100,200) for _ in range(10)]#[0,9,15,26,30,44,48]
+print('*** Observations ***')
+nobs = n_obs_per_day*int(Lt/3600/24)
+ind_obs = [np.random.randint(0,t2-t1) for _ in range(nobs)]#[0,9,15,26,30,44,48]
 yo = {}
 for ind in ind_obs:
-    yo[times_true[ind]] = ssh_obs[ind].ravel()
+    if kind_obs=='igws':
+        yo[times_true[ind]] = ssh_igws_true[ind]
+    elif kind_obs=='full':
+        yo[times_true[ind]] = ssh_true[ind]
     if plot:
         plt.figure()
-        plt.pcolormesh(ssh_obs[ind])
+        plt.pcolormesh(yo[times_true[ind]])
         plt.title(str(round(times_true[ind]/3600,1))+' hrs')
         plt.show()
+    yo[times_true[ind]] = yo[times_true[ind]].ravel()
         
 tobs = np.array(list(yo.keys()))
 y_list = np.array(list(yo.values()))
@@ -129,6 +125,7 @@ Rinv = 1/(_sigmao*_sigmao)*np.eye(H.nobs,H.nobs)
 ##############################################################################
 # Background
 ##############################################################################
+print('*** Background ***')
 B = None
 Xb = None
 
@@ -139,8 +136,9 @@ if reg:
 ##############################################################################
 # Variational
 ##############################################################################
+print('*** Variational ***')
 var = Variational(
-    Xb=Xb, M=swm, H=H, R=R, Rinv=Rinv, B=B,time_assim=Lt,time_spinup=None)
+    Xb=Xb, M=swm, H=H, R=R, Rinv=Rinv, B=B,time_assim=Lt,time_spinup=time_spinup)
 
 
 # Gradient check
@@ -160,7 +158,7 @@ print(Jini)
 ##############################################################################
 # DA
 ##############################################################################
-
+print('*** DA experiment ... ***')
 res_list = []
 
 niter = 0
@@ -183,9 +181,9 @@ def callback(XX):
         u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana \
             = get_ana_traj(XX,swm,times_true,Lt,time_spinup)
         fig = plot_diags_scores(
-            u_true,v_true,ssh_true,
+            u_igws_true,v_igws_true,ssh_igws_true,ssh_true,
             u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana,
-            times_true,tobs,dir_out,-1,str(niter) + ' iterations')
+            times_true,tobs,dir_out,-1,str(niter) + ' iterations',plot)
         fig.savefig(dir_out + '/result_iter' + str(niter).zfill(6),bbox_inches='tight' )
         
     niter+=1
@@ -193,7 +191,7 @@ def callback(XX):
 res = opt.minimize(var.cost,Xopt,
                    method='L-BFGS-B',
                    jac=var.grad,
-                   options={'disp': None, 'gtol': 1e-4, 'maxiter': 10000, 'iprint':10},
+                   options={'disp': None, 'gtol': gtol, 'maxiter': maxiter, 'iprint':iprint},
                    callback=callback)
 print()
 print ('Is the minimization successful? {}'.format(res.success))
@@ -206,10 +204,12 @@ print ('Number of iterations: {}'.format(res.nit))
 print()
 
 
+print('*** Plot results ***')
+
 u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana \
-            = get_ana_traj(res_list[-1],swm,times_true,Lt,None)
-plot_traj_scores(u_true,v_true,ssh_true,
-          u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,times_true,tobs,dir_out,dt_true)
+            = get_ana_traj(res_list[-1],swm,times_true,Lt,time_spinup)
+plot_traj_scores(u_igws_true,v_igws_true,ssh_igws_true,ssh_true,
+          u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,times_true,tobs,dir_out,dt_true,plot)
 
 
 

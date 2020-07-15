@@ -10,55 +10,56 @@ from datetime import timedelta
 
 # Experiment
 name_exp = 'twin_exp'
+plot = False
+
+# Nature run 
+path_nr = '/Users/leguillou/WORK/Developpement/Studies/Jet/4DVAR/DATA/uvh_igws_degraded.nc'
+t1,t2 = 500,600
+i1,i2 = 70,-60
+j1,j2 = 5,-5
+name_nr_x = 'x_rho'
+name_nr_y = 'y_rho'
+name_nr_time = 'time'
+name_nr_u_igws = 'u_igws'
+name_nr_v_igws = 'v_igws'
+name_nr_ssh_igws = 'ssh_igws'
+name_nr_u = 'u'
+name_nr_v = 'v'
+name_nr_ssh = 'ssh'
 
 # Model
-Lt = 10*24*3600
-nx = 50
-ny = 50
-Lx = 1000e3
-Ly = 1000e3
-He_true = 1.
-dt = 3600
-
 w_igws = [2*pi/12/3600]
+He = 1.
+dt = 3600
+D_He = 500e3
+T_He = timedelta(days=10).total_seconds()
+D_bc = 500e3
+T_bc = timedelta(days=10).total_seconds()
 
-# param estimation
-He_b = He_true
+# Observations
+kind_obs = 'igws' # or 'full'
+n_obs_per_day = 1
 
 # Regularisation
 reg = False
 alpha = {'V':100}
 sigmab = {'h':0.2,'He':0.2,'bc':0.2}
 
-
-
 # Time parameters
 time_init = timedelta(days=20).total_seconds()
-time_spinup = timedelta(days=0).total_seconds()
+time_spinup = timedelta(days=10).total_seconds()
 time_assim =  timedelta(days=10).total_seconds()
-
-# Error staristics
-sigmao = 1              # Observation error std
-noise = False
               
 # Assimilation Parameters
-time_obs = [
-            timedelta(days=0,hours=6).total_seconds(),
-            timedelta(days=1,hours=3).total_seconds(),
-            timedelta(days=2,hours=3).total_seconds(),
-            timedelta(days=3,hours=3).total_seconds(),
-            timedelta(days=4,hours=3).total_seconds(),
-            timedelta(days=5,hours=3).total_seconds(),
-            timedelta(days=6,hours=3).total_seconds(),
-            timedelta(days=7,hours=3).total_seconds(),
-            timedelta(days=8,hours=3).total_seconds(),
-            timedelta(days=9,hours=3).total_seconds(),
-            ]   
-iobsxsub = 1                    
-D_He = 500e3
-T_He = timedelta(days=10).total_seconds()
-D_bc = 500e3
-T_bc = timedelta(days=10).total_seconds()
+sigmao = 1              # Observation error std
+noise = False
+iobsxsub = 1    
+
+# Minimization
+gtol = 1e-4
+maxiter = 11
+iprint = 10                
+
 
 # Save parameters
 path_plot = '/scratch/4Dvar_IGWs/Outputs/'
