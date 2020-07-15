@@ -9,7 +9,7 @@ from math import pi
 from datetime import timedelta
 
 # Experiment
-name_exp = 'swm_long_window_2obs_3h_nospinup'
+name_exp = 'twin_exp'
 
 # Model
 Lt = 10*24*3600
@@ -34,7 +34,7 @@ sigmab = {'h':0.2,'He':0.2,'bc':0.2}
 
 # Time parameters
 time_init = timedelta(days=20).total_seconds()
-time_spinup = timedelta(days=20).total_seconds()
+time_spinup = timedelta(days=0).total_seconds()
 time_assim =  timedelta(days=10).total_seconds()
 
 # Error staristics
@@ -54,11 +54,11 @@ time_obs = [
             timedelta(days=8,hours=3).total_seconds(),
             timedelta(days=9,hours=3).total_seconds(),
             ]   
-iobsxsub = 1                     # Frequency of spatial subsampling of observations, [1:nx], 1=every space step
+iobsxsub = 1                    
 D_He = 500e3
-T_He = timedelta(days=2).total_seconds()
+T_He = timedelta(days=10).total_seconds()
 D_bc = 500e3
-T_bc = timedelta(days=2).total_seconds()
+T_bc = timedelta(days=10).total_seconds()
 
 # Save parameters
 path_plot = '/scratch/4Dvar_IGWs/Outputs/'

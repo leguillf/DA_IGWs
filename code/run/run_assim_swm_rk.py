@@ -17,13 +17,7 @@ from B import *
 from var import *
 from tools import *
 from results import *
-import numpy as np 
-import matplotlib.pyplot as plt
-from scipy.linalg import inv 
-from math import exp
-import scipy.linalg as lin
 import scipy.optimize as opt
-import matplotlib.gridspec as gridspec
 import shutil
 from datetime import datetime
 from scipy import interpolate

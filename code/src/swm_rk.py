@@ -20,10 +20,10 @@ class Swm:
         # Set parameters
         self.nx = nx
         self.Lx = Lx
-        self.dx = Lx / (nx-1)
+        self.dx = Lx / nx
         self.ny = ny
         self.Ly = Ly
-        self.dy = Ly / (ny-1)
+        self.dy = Ly / ny
         self.f = f
         self.g = g
         if dt is None:

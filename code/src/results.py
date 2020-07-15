@@ -7,6 +7,7 @@ Created on Thu Jun 18 10:23:46 2020
 """
 
 import numpy as np 
+from scipy import interpolate
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
@@ -38,7 +39,8 @@ def compute_score(true,ana):
     
     return score
 
-def get_ana_traj(Xopt,M,time_assim,time_spinup=None):
+def get_ana_traj(Xopt,M,times_true,time_assim,time_spinup=None):
+    
     u = Xopt[M.sliceu].reshape(M.shapeu)
     v = Xopt[M.slicev].reshape(M.shapev)
     h = Xopt[M.sliceh].reshape(M.shapeh)
@@ -53,7 +55,6 @@ def get_ana_traj(Xopt,M,time_assim,time_spinup=None):
         u,v,h = traj_spinup[-1]
         t0 += time_spinup//M.dt*M.dt 
             
-            
     u_ana = [u]
     v_ana = [v]
     h_ana = [h]
@@ -64,9 +65,12 @@ def get_ana_traj(Xopt,M,time_assim,time_spinup=None):
     
     t = t0
     
+    tt = [t0]
+    
     while t<t0+time_assim:
         
         u,v,h = M.step(t,u,v,h,He=He,hbcx=hbcx,hbcy=hbcy)
+        t += M.dt
         
         u_ana.append(u)
         v_ana.append(v)
@@ -76,7 +80,8 @@ def get_ana_traj(Xopt,M,time_assim,time_spinup=None):
         hbcx_ana.append(hbcx0)
         hbcy_ana.append(hbcy0)
         
-        t += M.dt
+        tt.append(t)
+    
     
     u_ana = np.asarray(u_ana)
     v_ana = np.asarray(v_ana)
@@ -84,308 +89,138 @@ def get_ana_traj(Xopt,M,time_assim,time_spinup=None):
     He_ana = np.asarray(He_ana)
     hbcx_ana = np.asarray(hbcx_ana)
     hbcy_ana = np.asarray(hbcy_ana)
+    tt = np.asarray(tt)
+
+    
+    # time interpolation
+    f = interpolate.interp1d(tt,u_ana,axis=0)
+    u_ana = f(times_true)
+    f = interpolate.interp1d(tt,v_ana,axis=0)
+    v_ana = f(times_true)
+    f = interpolate.interp1d(tt,h_ana,axis=0)
+    h_ana = f(times_true)
+    f = interpolate.interp1d(tt,He_ana,axis=0)
+    He_ana = f(times_true)
+    f = interpolate.interp1d(tt,hbcx_ana,axis=0)
+    hbcx_ana = f(times_true)
+    f = interpolate.interp1d(tt,hbcy_ana,axis=0)
+    hbcy_ana = f(times_true)
     
     return u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana
 
 
 
-def plot_result(
-        u_true,v_true,h_true,He_true,hbcx_true,hbcy_true,
+def plot_diags_scores(
+        u_true,v_true,h_true,
         u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,
-        tobs,niter,dir_out):
+        times,tobs,dir_out,ind,title):
 
-    gs = gridspec.GridSpec(6, 4,height_ratios=[1,1,1,1,0.5,0.5])
-    fig = plt.figure(figsize=(30, 30)) 
-    fig.suptitle(str(niter) + ' iterations')
+    fig,axs = plt.subplots(4,3,figsize=(30, 30)) 
     
+    fig.suptitle(title)
     
-    # Scores
-    score_u  = compute_score(u_true,u_ana)
-    score_v  = compute_score(v_true,v_ana)
-    score_h  = compute_score(h_true,h_ana)
-    score_He  = compute_score(He_true,He_ana)
-    hbc_true_all = np.concatenate((
-        hbcx_true[:,0,0,:],hbcx_true[:,0,1,:],
-        hbcx_true[:,1,0,:],hbcx_true[:,1,1,:],
-        hbcy_true[:,0,0,:],hbcy_true[:,0,1,:],
-        hbcy_true[:,1,0,:],hbcy_true[:,1,1,:]),axis=1)
-    hbc_ana_all = np.concatenate((
-        hbcx_ana[:,0,0,:],hbcx_ana[:,0,1,:],
-        hbcx_ana[:,1,0,:],hbcx_ana[:,1,1,:],
-        hbcy_ana[:,0,0,:],hbcy_ana[:,0,1,:],
-        hbcy_ana[:,1,0,:],hbcy_ana[:,1,1,:]),axis=1)
-    score_hbc  = compute_score(hbc_true_all,hbc_ana_all)
+    # Scores 
+    score_u = compute_score(u_true,u_ana)
+    score_v = compute_score(v_true,v_ana)
+    score_h = compute_score(h_true,h_ana)
     
     # Ranges
-    range_u  = np.max(np.abs(u_true[0]))
-    range_v  = np.max(np.abs(v_true[0]))
-    range_h  = np.max(np.abs(h_true[0]))
-    min_He = np.min(He_true[0])
-    max_He = np.max(He_true[0])
+    range_u = 0.9*np.max(np.abs(u_true))
+    range_v = 0.9*np.max(np.abs(v_true))
+    range_h = 0.9*np.max(np.abs(h_true))
     
     # U
-    ax1 = plt.subplot(gs[0, 0])
-    ax2 = plt.subplot(gs[0, 1])  
-    ax3 = plt.subplot(gs[0, 2:])  
-    im = ax1.pcolormesh(u_true[0], vmin=-range_u,vmax=range_u,cmap='RdBu_r')
-    ax2.pcolormesh(u_ana[0], vmin=-range_u,vmax=range_u,cmap='RdBu_r')
-    cbar = plt.colorbar(im,ax=(ax1,ax2))
-    cbar.ax.set_ylabel('U (m/S)')
+    im1 = axs[0,0].pcolormesh(u_true[ind],vmin=-range_u,vmax=range_u,cmap='RdBu_r')
+    cbar = plt.colorbar(im1,ax=axs[0,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax1.set_title('Truth')
-    ax2.set_title('Analysis')
-    ax3.plot(score_u)
-    ax3.set_ylim(0.,1)
-
+    axs[0,0].set_title('u_true')
+    im2 = axs[0,1].pcolormesh(u_ana[ind],vmin=-range_u,vmax=range_u,cmap='RdBu_r')
+    cbar = plt.colorbar(im2,ax=axs[0,1])
+    cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
+    axs[0,1].set_title('u_ana')
+    axs[0,2].set_title('RMSE score (u)')
+    axs[0,2].plot(times[:ind]/3600/24,score_u[:ind])
+    axs[0,2].set_xlim(0,times[-1]/3600/24)
+    axs[0,2].set_ylim(0,1)
+    axs[0,2].set_xlabel('time (days)')
     
     # V
-    ax1 = plt.subplot(gs[1, 0])
-    ax2 = plt.subplot(gs[1, 1])  
-    ax3 = plt.subplot(gs[1, 2:])  
-    im = ax1.pcolormesh(v_true[0], vmin=-range_v,vmax=range_v,cmap='RdBu_r')
-    ax2.pcolormesh(v_ana[0], vmin=-range_v,vmax=range_v,cmap='RdBu_r')
-    cbar = plt.colorbar(im,ax=(ax1,ax2))
-    cbar.ax.set_ylabel('V (m/S)')
+    im1 = axs[1,0].pcolormesh(v_true[ind],vmin=-range_v,vmax=range_v,cmap='RdBu_r')
+    cbar = plt.colorbar(im1,ax=axs[1,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax1.set_title('Truth')
-    ax2.set_title('Analysis')
-    ax3.plot(score_v)
-    ax3.set_ylim(0.,1)
-    
-    # SLA
-    ax1 = plt.subplot(gs[2, 0])
-    ax2 = plt.subplot(gs[2, 1])  
-    ax3 = plt.subplot(gs[2, 2:])  
-    im = ax1.pcolormesh(h_true[0], vmin=-range_h,vmax=range_h,cmap='RdBu_r')
-    ax2.pcolormesh(h_ana[0], vmin=-range_h,vmax=range_h,cmap='RdBu_r')
-    cbar = plt.colorbar(im,ax=(ax1,ax2))
-    cbar.ax.set_ylabel('SLA (m)')
+    axs[1,0].set_title('v_true')
+    im2 = axs[1,1].pcolormesh(v_ana[ind],vmin=-range_v,vmax=range_v,cmap='RdBu_r')
+    cbar = plt.colorbar(im2,ax=axs[1,1])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax1.set_title('Truth')
-    ax2.set_title('Analysis')
-    ax3.plot(score_h)
-    ax3.plot(tobs,0.5*np.ones((len(tobs))),'xr',markersize=20)
-    ax3.set_ylim(0.,1)
+    axs[1,1].set_title('v_ana')
+    axs[1,2].set_title('RMSE score (v)')
+    axs[1,2].plot(times[:ind]/3600/24,score_v[:ind])
+    axs[1,2].set_xlim(0,times[-1]/3600/24)
+    axs[1,2].set_ylim(0,1)
+    axs[1,2].set_xlabel('time (days)')
     
-    # He 
-    ax1 = plt.subplot(gs[3, 0])
-    ax2 = plt.subplot(gs[3, 1])  
-    ax3 = plt.subplot(gs[3, 2:])  
-    im = ax1.pcolormesh(He_true[0],vmin=min_He,vmax=max_He)
-    ax2.pcolormesh(He_ana[0],vmin=min_He,vmax=max_He)
-    cbar = plt.colorbar(im,ax=(ax1,ax2))
-    cbar.ax.set_ylabel('He (m)')
+    # SSH
+    im1 = axs[2,0].pcolormesh(h_true[ind],vmin=-range_h,vmax=range_h,cmap='RdBu_r')
+    cbar = plt.colorbar(im1,ax=axs[2,0])
     cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax1.set_title('Truth')
-    ax2.set_title('Analysis')
-    ax3.plot(score_He)
-    ax3.set_ylim(0.,1)
+    axs[2,0].set_title('ssh_true')
+    im2 = axs[2,1].pcolormesh(h_ana[ind],vmin=-range_h,vmax=range_h,cmap='RdBu_r')
+    cbar = plt.colorbar(im2,ax=axs[2,1])
+    cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
+    axs[2,1].set_title('ssh_ana')
+    axs[2,2].plot(times[:ind]/3600/24,score_h[:ind])
+    axs[2,2].set_title('RMSE score (ssh)')
+    axs[2,2].plot(tobs/3600/24,0.5*np.ones((len(tobs))),'xr',markersize=20)
+    axs[2,2].set_xlim(0,times[-1]/3600/24)
+    axs[2,2].set_xlabel('time (days)')
+    axs[2,2].set_ylim(0,1)
     
-    # Boundary conditions 
-    ax1 = plt.subplot(gs[4, 0])
-    ax2 = plt.subplot(gs[4, 1])
-    ax3 = plt.subplot(gs[5, 0])  
-    ax4 = plt.subplot(gs[5, 1])
-    ax5 = plt.subplot(gs[4:, 2:])   
-
+    # He & Boundary conditions 
+    im1 = axs[3,0].pcolormesh(He_ana[ind])
+    cbar = plt.colorbar(im1,ax=axs[3,0])
+    cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
+    cbar.ax.set_title('m')
+    axs[3,0].set_title('He_ana')
     
-    ax1.plot(hbcx_true[0,1,0],label='cos (truth)',c='b')
-    ax1.plot(hbcx_ana[0,1,0],label='cos (ana)',c='b',linestyle='--')
-    ax1.plot(hbcx_true[0,1,1],label='sin (truth)',c='r')
-    ax1.plot(hbcx_ana[0,1,1],label='sin (ana)',c='r',linestyle='--')
-    ax1.legend(loc=3)
-    ax1.set_title('Northern boundary')        
-    ax1.set_ylabel('SLA (m)')
-    ax1.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax1.set_ylim(-range_h,range_h)
+    axs[3,1].plot(hbcx_ana[ind,0,0],label='South (cos)',c='b')
+    axs[3,1].plot(hbcx_ana[ind,0,1],label='South (sin)',c='b',linestyle='--')
+    axs[3,1].plot(hbcx_ana[ind,1,0],label='North (cos)',c='r')
+    axs[3,1].plot(hbcx_ana[ind,1,1],label='North (sin)',c='r',linestyle='--')
+    axs[3,2].plot(hbcy_ana[ind,0,0],label='West (cos)',c='c')
+    axs[3,2].plot(hbcy_ana[ind,0,1],label='West (sin)',c='c',linestyle='--')
+    axs[3,2].plot(hbcy_ana[ind,1,0],label='East (cos)',c='g')
+    axs[3,2].plot(hbcy_ana[ind,1,1],label='East (sin)',c='g',linestyle='--')
     
-    ax2.plot(hbcx_true[0,0,0],label='cos (true)',c='b')
-    ax2.plot(hbcx_ana[0,0,0],label='cos (ana)',c='b',linestyle='--')
-    ax2.plot(hbcx_true[0,0,1],label='sin (true)',c='r')
-    ax2.plot(hbcx_ana[0,0,1],label='sin (ana)',c='r',linestyle='--')
-    ax2.set_title('Southern boundary')
-    ax2.set_ylabel('SLA (m)')
-    ax2.set_xlabel('nx')
-    ax2.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax2.set_ylim(-range_h,range_h)
+    axs[3,1].set_xlabel('nx')
+    axs[3,1].set_ylabel('ssh (m)')
+    axs[3,2].set_xlabel('ny')
+    axs[3,2].set_ylabel('ssh (m)')
     
-    ax3.plot(hbcy_true[0,0,0],label='cos (true)',c='b')
-    ax3.plot(hbcy_ana[0,0,0],label='cos (ana)',c='b',linestyle='--')
-    ax3.plot(hbcy_true[0,0,1],label='sin (true)',c='r')
-    ax3.plot(hbcy_ana[0,0,1],label='sin (ana)',c='r',linestyle='--')
-    ax3.set_title('Western boundary')
-    ax3.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax3.set_ylim(-range_h,range_h)
+    axs[3,1].legend()
+    axs[3,2].legend()
     
-    ax4.plot(hbcy_true[0,1,0],label='cos (true)',c='b')
-    ax4.plot(hbcy_ana[0,1,0],label='cos (ana)',c='b',linestyle='--')
-    ax4.plot(hbcy_true[0,1,1],label='sin (true)',c='r')
-    ax4.plot(hbcy_ana[0,1,1],label='sin (ana)',c='r',linestyle='--')
-    ax4.set_title('Eastern boundary')
-    ax4.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-    ax4.set_xlabel('ny')
-    ax4.set_ylim(-range_h,range_h)
-    
-    ax5.plot(score_hbc)
-    ax5.set_ylim(0.,1)
-    
-    fig.savefig( dir_out + '/results_iter' + str(niter).zfill(6),bbox_inches='tight' )
-    
-    plt.close('all')
+    plt.show()
+ 
+    return fig
+        
     
     
 
-def plot_traj(u_true,v_true,h_true,He_true,hbcx_true,hbcy_true,
-        u_ana,v_ana,h_ana,He_ana,hbcx_ana,hbcy_ana,
-        tobs,dir_out,dt):
+def plot_traj_scores(u_true,v_true,ssh_true,
+        u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana,
+        times,tobs,dir_out,dt):
     
     time = 0
     nt = len(u_true)
     
     
     
-    # Ranges
-    range_u = np.max(np.abs(u_true))
-    range_v = np.max(np.abs(v_true))
-    range_h = np.max(np.abs(h_true))
-    min_He = np.min(He_true)
-    max_He = np.max(He_true)
-    
     for ind in range(nt):
         
-        # Scores
-        score_u = compute_score(np.asarray(u_true)[:ind],np.asarray(u_ana)[:ind])
-        score_v = compute_score(np.asarray(v_true)[:ind],np.asarray(v_ana)[:ind])
-        score_h = compute_score(np.asarray(h_true)[:ind],np.asarray(h_ana)[:ind])
-        score_He = compute_score(np.asarray(He_true)[:ind],np.asarray(He_ana)[:ind])
-        hbc_true_all = np.concatenate((
-            hbcx_true[:,0,0,:],hbcx_true[:,0,1,:],
-            hbcx_true[:,1,0,:],hbcx_true[:,1,1,:],
-            hbcy_true[:,0,0,:],hbcy_true[:,0,1,:],
-            hbcy_true[:,1,0,:],hbcy_true[:,1,1,:]),axis=1)
-        hbc_ana_all = np.concatenate((
-            hbcx_ana[:,0,0,:],hbcx_ana[:,0,1,:],
-            hbcx_ana[:,1,0,:],hbcx_ana[:,1,1,:],
-            hbcy_ana[:,0,0,:],hbcy_ana[:,0,1,:],
-            hbcy_ana[:,1,0,:],hbcy_ana[:,1,1,:]),axis=1)
-        score_hbc  = compute_score(hbc_true_all,hbc_ana_all)
+        fig = plot_diags_scores(
+            u_true,v_true,ssh_true,
+            u_ana,v_ana,ssh_ana,He_ana,hbcx_ana,hbcy_ana,
+            times,tobs,dir_out,ind,str(round(time/3600,1)) + ' hrs')
+        fig.savefig(dir_out + '/snapshot_iter' + str(ind).zfill(6),bbox_inches='tight')
         
-        gs = gridspec.GridSpec(6, 4,height_ratios=[1,1,1,1,0.5,0.5])
-        fig = plt.figure(figsize=(30, 30)) 
-        fig.suptitle(str(round(ind*dt/3600,2)) + ' hrs')
-    
-        # U
-        ax1 = plt.subplot(gs[0, 0])
-        ax2 = plt.subplot(gs[0, 1])  
-        ax3 = plt.subplot(gs[0, 2:])  
-        im = ax1.pcolormesh(u_true[ind], vmin=-range_u,vmax=range_u,cmap='RdBu_r')
-        ax2.pcolormesh(u_ana[ind], vmin=-range_u,vmax=range_u,cmap='RdBu_r')
-        cbar = plt.colorbar(im,ax=(ax1,ax2))
-        cbar.ax.set_ylabel('U (m/S)')
-        cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax1.set_title('Truth')
-        ax2.set_title('Analysis')
-        ax3.plot(score_u)
-        ax3.set_ylim(0.,1)
-        ax3.set_xlim(0,nt)
-    
-        
-        # V
-        ax1 = plt.subplot(gs[1, 0])
-        ax2 = plt.subplot(gs[1, 1])  
-        ax3 = plt.subplot(gs[1, 2:])  
-        im = ax1.pcolormesh(v_true[ind], vmin=-range_v,vmax=range_v,cmap='RdBu_r')
-        ax2.pcolormesh(v_ana[ind], vmin=-range_v,vmax=range_v,cmap='RdBu_r')
-        cbar = plt.colorbar(im,ax=(ax1,ax2))
-        cbar.ax.set_ylabel('V (m/S)')
-        cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax1.set_title('Truth')
-        ax2.set_title('Analysis')
-        ax3.plot(score_v)
-        ax3.set_ylim(0.,1)
-        ax3.set_xlim(0,nt)
-        
-        # SLA
-        ax1 = plt.subplot(gs[2, 0])
-        ax2 = plt.subplot(gs[2, 1])  
-        ax3 = plt.subplot(gs[2, 2:])  
-        im = ax1.pcolormesh(h_true[ind], vmin=-range_h,vmax=range_h,cmap='RdBu_r')
-        ax2.pcolormesh(h_ana[ind], vmin=-range_h,vmax=range_h,cmap='RdBu_r')
-        cbar = plt.colorbar(im,ax=(ax1,ax2))
-        cbar.ax.set_ylabel('SLA (m)')
-        cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax1.set_title('Truth')
-        ax2.set_title('Analysis')
-        ax3.plot(score_h)
-        ax3.plot(tobs,0.5*np.ones((len(tobs))),'xr',markersize=20)
-        ax3.set_ylim(0.,1)
-        ax3.set_xlim(0,nt)
-        
-        # He 
-        ax1 = plt.subplot(gs[3, 0])
-        ax2 = plt.subplot(gs[3, 1])  
-        ax3 = plt.subplot(gs[3, 2:])  
-        im = ax1.pcolormesh(He_true[ind],vmin=min_He,vmax=max_He)
-        ax2.pcolormesh(He_ana[ind],vmin=min_He,vmax=max_He)
-        cbar = plt.colorbar(im,ax=(ax1,ax2))
-        cbar.ax.set_ylabel('He (m)')
-        cbar.ax.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax1.set_title('Truth')
-        ax2.set_title('Analysis')
-        ax3.plot(score_He)
-        ax3.set_ylim(0.,1)
-        ax3.set_xlim(0,nt)
-        
-        # Boundary conditions 
-        ax1 = plt.subplot(gs[4, 0])
-        ax2 = plt.subplot(gs[4, 1])
-        ax3 = plt.subplot(gs[5, 0])  
-        ax4 = plt.subplot(gs[5, 1])
-        ax5 = plt.subplot(gs[4:, 2:])   
-    
-        
-        ax1.plot(hbcx_true[ind,1,0],label='cos (truth)',c='b')
-        ax1.plot(hbcx_ana[ind,1,0],label='cos (ana)',c='b',linestyle='--')
-        ax1.plot(hbcx_true[ind,1,1],label='sin (truth)',c='r')
-        ax1.plot(hbcx_ana[ind,1,1],label='sin (ana)',c='r',linestyle='--')
-        ax1.legend(loc=3)
-        ax1.set_title('Northern boundary')        
-        ax1.set_ylabel('SLA (m)')
-        ax1.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax1.set_ylim(-range_h,range_h)
-        
-        ax2.plot(hbcx_true[ind,0,0],label='cos (true)',c='b')
-        ax2.plot(hbcx_ana[ind,0,0],label='cos (ana)',c='b',linestyle='--')
-        ax2.plot(hbcx_true[ind,0,1],label='sin (true)',c='r')
-        ax2.plot(hbcx_ana[ind,0,1],label='sin (ana)',c='r',linestyle='--')
-        ax2.set_title('Southern boundary')
-        ax2.set_ylabel('SLA (m)')
-        ax2.set_xlabel('nx')
-        ax2.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax2.set_ylim(-range_h,range_h)
-        
-        ax3.plot(hbcy_true[ind,0,0],label='cos (true)',c='b')
-        ax3.plot(hbcy_ana[ind,0,0],label='cos (ana)',c='b',linestyle='--')
-        ax3.plot(hbcy_true[ind,0,1],label='sin (true)',c='r')
-        ax3.plot(hbcy_ana[ind,0,1],label='sin (ana)',c='r',linestyle='--')
-        ax3.set_title('Western boundary')
-        ax3.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax3.set_ylim(-range_h,range_h)
-        
-        ax4.plot(hbcy_true[ind,1,0],label='cos (true)',c='b')
-        ax4.plot(hbcy_ana[ind,1,0],label='cos (ana)',c='b',linestyle='--')
-        ax4.plot(hbcy_true[ind,1,1],label='sin (true)',c='r')
-        ax4.plot(hbcy_ana[ind,1,1],label='sin (ana)',c='r',linestyle='--')
-        ax4.set_title('Eastern boundary')
-        ax4.ticklabel_format(style='sci', axis='y',scilimits=(0,0))  
-        ax4.set_xlabel('ny')
-        ax4.set_ylim(-range_h,range_h)
-        
-        ax5.plot(score_hbc)
-        ax5.set_ylim(0.,1)
-    
-        fig.savefig( dir_out + '/snapshot_' + str(time).zfill(6),bbox_inches='tight' )
-        
-        plt.close('all')
-            
         time += dt
